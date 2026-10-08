@@ -125,7 +125,7 @@
 
     // 修改这里以匹配实际文件路径和扩展名。
     function audioPath(model, lang, num) {
-      return `audio/${model}/${lang}/${num}.mp3`;
+      return `audio/${model}/${lang}/${model}_${lang}_${num}.wav`;
     }
 
     const tbody = document.getElementById("samples");
