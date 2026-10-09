@@ -3,44 +3,61 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Anonymous Audio Samples</title>
+  <title>Song Generation — Audio Samples</title>
+
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
       background: #f7f8fa;
       color: #222;
-      font-family: Arial, sans-serif;
+      font-family: Arial, Helvetica, sans-serif;
     }
 
     main {
-      max-width: 1200px;
-      margin: 40px auto;
-      padding: 0 20px;
+      width: 100%;
+      margin: 36px auto;
+      padding: 0 24px;
     }
 
-    h1 { margin-bottom: 10px; }
+    h1 {
+      margin: 0 0 12px;
+      font-size: 28px;
+    }
 
     .intro {
+      margin: 0 0 24px;
       color: #666;
-      margin-bottom: 28px;
+      font-size: 15px;
+      line-height: 1.6;
     }
 
     .table-wrap {
       overflow-x: auto;
-      background: white;
-      border: 1px solid #ddd;
+      background: #fff;
+      border: 1px solid #dfe3e8;
       border-radius: 10px;
     }
 
     table {
       width: 100%;
-      min-width: 760px;
-      border-collapse: collapse;
+      min-width: 2360px;
+      border-collapse: separate;
+      border-spacing: 0;
       table-layout: fixed;
     }
 
-    th, td {
-      padding: 18px;
+    col.language-col {
+      width: 120px;
+    }
+
+    th,
+    td {
+      padding: 18px 16px;
+      border-right: 1px solid #e5e7eb;
       border-bottom: 1px solid #e5e7eb;
       text-align: left;
       vertical-align: top;
@@ -48,16 +65,38 @@
 
     thead th {
       background: #edf1f5;
+      text-align: center;
+      vertical-align: middle;
       font-size: 16px;
-    }
-
-    .method {
-      width: 140px;
       font-weight: bold;
     }
 
+    .row-heading {
+      position: sticky;
+      left: 0;
+      z-index: 1;
+      background: #f3f5f7;
+      vertical-align: middle;
+      text-align: center;
+      font-size: 15px;
+    }
+
+    thead .row-heading {
+      z-index: 2;
+      background: #edf1f5;
+    }
+
+    td.ours {
+      background: #f0f7ff;
+    }
+
+    thead th.ours {
+      background: #deedff;
+      color: #175da8;
+    }
+
     .sample {
-      margin-bottom: 14px;
+      margin-bottom: 18px;
     }
 
     .sample:last-child {
@@ -66,7 +105,7 @@
 
     .label {
       display: block;
-      margin-bottom: 5px;
+      margin-bottom: 7px;
       color: #666;
       font-size: 13px;
     }
@@ -74,74 +113,141 @@
     audio {
       display: block;
       width: 100%;
-      height: 36px;
+      height: 40px;
     }
 
-    .ours {
-      background: #f0f7ff;
+    .error {
+      display: block;
+      margin-top: 5px;
+      color: #b42318;
+      font-size: 12px;
     }
 
-    tr:last-child td,
-    tr:last-child th {
+    .error[hidden] {
+      display: none;
+    }
+
+    tr > :last-child {
+      border-right: none;
+    }
+
+    tbody tr:last-child > * {
       border-bottom: none;
+    }
+
+    .hint {
+      margin-top: 12px;
+      color: #777;
+      font-size: 13px;
+    }
+
+    @media (max-width: 600px) {
+      main {
+        margin: 24px auto;
+        padding: 0 12px;
+      }
+
+      h1 {
+        font-size: 23px;
+      }
     }
   </style>
 </head>
+
 <body>
   <main>
-    <h1>Audio Samples</h1>
+    <h1>Song Generation: Audio Samples</h1>
+
     <p class="intro">
-      Song generation comparisons for anonymous review.
-      Five samples are provided for each method in each language.
+      Five English and five Chinese samples are provided for each method.
+      Select a player below to listen.
     </p>
 
     <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th class="method" scope="col">Method</th>
-            <th scope="col">English</th>
-            <th scope="col">Chinese</th>
-          </tr>
-        </thead>
+      <table aria-label="Song generation audio comparisons">
+        <colgroup>
+          <col class="language-col">
+          <col span="7">
+        </colgroup>
+        <thead id="methods"></thead>
         <tbody id="samples"></tbody>
       </table>
     </div>
+
+    <p class="hint">
+      Scroll horizontally to view all methods.
+      Playing a sample automatically pauses the previous one.
+    </p>
+
+    <noscript>
+      Please enable JavaScript to display the audio samples.
+    </noscript>
   </main>
 
   <script>
     const MODELS = [
-      ["acestep", "ACE-Step"],
-      ["heartmula", "HeartMuLa"],
-      ["mureka", "Mureka"],
-      ["muse", "Muse"],
       ["ours", "Ours"],
       ["suno", "Suno"],
+      ["mureka", "Mureka"],
+      ["heartmula", "HeartMuLa"],
+      ["muse", "Muse"],
+      ["acestep", "ACE-Step"],
       ["yue", "YuE"]
     ];
 
-    const LANGS = ["en", "zh"];
+    const LANGS = [
+      ["en", "English (en)"],
+      ["zh", "Chinese (zh)"]
+    ];
+
     const SONG_NUMS = [1, 2, 3, 4, 5];
 
-    // 修改这里以匹配实际文件路径和扩展名。
+    // Example: audio/acestep/en/acestep_en_1.wav
     function audioPath(model, lang, num) {
       return `audio/${model}/${lang}/${model}_${lang}_${num}.wav`;
     }
 
-    const tbody = document.getElementById("samples");
+    // First row: method names.
+    const header = document.createElement("tr");
+
+    const corner = document.createElement("th");
+    corner.className = "row-heading";
+    corner.scope = "col";
+    corner.textContent = "Methods";
+    header.appendChild(corner);
 
     for (const [model, name] of MODELS) {
+      const heading = document.createElement("th");
+      heading.scope = "col";
+      heading.textContent = name;
+
+      if (model === "ours") {
+        heading.classList.add("ours");
+      }
+
+      header.appendChild(heading);
+    }
+
+    document.getElementById("methods").appendChild(header);
+
+    // Second and third rows: English and Chinese samples.
+    const tbody = document.getElementById("samples");
+
+    for (const [lang, language] of LANGS) {
       const row = document.createElement("tr");
-      if (model === "ours") row.classList.add("ours");
 
-      const method = document.createElement("th");
-      method.className = "method";
-      method.scope = "row";
-      method.textContent = name;
-      row.appendChild(method);
+      const rowHeading = document.createElement("th");
+      rowHeading.className = "row-heading";
+      rowHeading.scope = "row";
+      rowHeading.textContent = language;
+      row.appendChild(rowHeading);
 
-      for (const lang of LANGS) {
+      for (const [model, name] of MODELS) {
         const cell = document.createElement("td");
+
+        if (model === "ours") {
+          cell.classList.add("ours");
+        }
 
         for (const num of SONG_NUMS) {
           const sample = document.createElement("div");
@@ -157,10 +263,23 @@
           audio.src = audioPath(model, lang, num);
           audio.setAttribute(
             "aria-label",
-            `${name}, ${lang}, sample ${num}`
+            `${name}, ${language}, sample ${num}`
           );
 
-          sample.append(label, audio);
+          const error = document.createElement("span");
+          error.className = "error";
+          error.hidden = true;
+          error.textContent = "Audio could not be loaded.";
+
+          audio.addEventListener("error", () => {
+            error.hidden = false;
+          });
+
+          audio.addEventListener("loadedmetadata", () => {
+            error.hidden = true;
+          });
+
+          sample.append(label, audio, error);
           cell.appendChild(sample);
         }
 
@@ -170,11 +289,16 @@
       tbody.appendChild(row);
     }
 
-    // 播放新样例时暂停其他播放器。
+    // Pause other players whenever a new sample starts.
     document.addEventListener("play", (event) => {
-      if (!(event.target instanceof HTMLAudioElement)) return;
+      if (!(event.target instanceof HTMLAudioElement)) {
+        return;
+      }
+
       document.querySelectorAll("audio").forEach((audio) => {
-        if (audio !== event.target) audio.pause();
+        if (audio !== event.target) {
+          audio.pause();
+        }
       });
     }, true);
   </script>
